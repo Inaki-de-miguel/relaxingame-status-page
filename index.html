@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RelaxInGame Status</title>
+<meta name="description" content="Live status of relaxingame.app services.">
+<meta name="theme-color" content="#141414">
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* RelaxInGame Status — dark, minimal. Colours and fonts match relaxingame.app (base.css). */
+:root {
+  color-scheme: dark;
+  --bg: #141414;
+  --frame: #1c1c1c;
+  --raise: #242424;
+  --line: rgba(255,255,255,.07);
+  --line-2: rgba(255,255,255,.14);
+  --fg: #f4f4f4;
+  --fg-2: #9ca3af;
+  --fg-3: #5f6b7a;
+  --accent: #2BD4C4;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --down: #ff4655;
+  --empty: rgba(255,255,255,.07);
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --r: 8px;
+}
+* { box-sizing: border-box; }
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font-body); -webkit-font-smoothing: antialiased; }
+.page {
+  max-width: 760px; margin: 0 auto; display: grid; gap: 36px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 64px;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+/* Header */
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 8px; color: var(--fg); }
+.brand:hover { text-decoration: none; }
+.brand b { font: 600 17px var(--font-display); letter-spacing: -.01em; }
+.brand span { font: 12px var(--font-mono); color: var(--fg-3); }
+.back { font-size: 13px; color: var(--fg-2); }
+
+/* Dot */
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c, var(--fg-3)); flex: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c, var(--fg-3)) 20%, transparent); }
+.dot.lg { width: 11px; height: 11px; }
+.ok { --c: var(--ok); } .warn { --c: var(--warn); } .down { --c: var(--down); }
+@keyframes breathe { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--c, var(--fg-3)) 6%, transparent); } }
+.dot.pulse { animation: breathe 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .dot.pulse { animation: none; } }
+
+/* Verdict */
+.verdict { display: flex; align-items: center; gap: 12px; }
+.verdict h1 { margin: 0; font: 600 clamp(1.3rem, 1.1rem + 1vw, 1.7rem) var(--font-display); letter-spacing: -.015em; text-wrap: balance; }
+.sub { margin: 6px 0 0 23px; font: 12px var(--font-mono); color: var(--fg-3); }
+
+/* Board */
+.frame { background: var(--frame); border: 1px solid var(--line); border-radius: var(--r); padding: 22px; }
+@media (max-width: 520px) { .frame { padding: 16px; } }
+.head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.head h2 { margin: 0; font: 500 12px var(--font-mono); color: var(--fg-2); text-transform: uppercase; letter-spacing: .1em; }
+.legend { display: flex; gap: 14px; font: 11px var(--font-mono); color: var(--fg-3); flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .dot { width: 6px; height: 6px; box-shadow: none; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+.tile { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r); font-size: 14px; transition: border-color .15s, background .15s; }
+.tile:hover { border-color: var(--line-2); }
+.tile[aria-expanded="true"] { border-color: var(--line-2); background: var(--raise); }
+.skeleton { height: 46px; border: 1px solid var(--line); border-radius: var(--r); background: var(--raise); opacity: .5; }
+
+/* Detail (opens under the clicked tile's row) */
+.detail { grid-column: 1 / -1; display: grid; grid-template-rows: 0fr; transition: grid-template-rows .22s ease; }
+.grid > .detail:not(.open) { margin-top: -8px; }
+.detail > div { overflow: hidden; min-width: 0; }
+.detail.open { grid-template-rows: 1fr; }
+@media (prefers-reduced-motion: reduce) { .detail { transition: none; } }
+.inner { padding: 16px 14px; display: grid; gap: 12px; border: 1px solid var(--line-2); border-radius: var(--r); background: var(--raise); }
+.state { font: 500 11px var(--font-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--c); }
+.msg { font-size: 14px; color: var(--fg-2); margin: 0; max-width: 62ch; }
+.strip { display: grid; grid-template-columns: repeat(30, 1fr); gap: 3px; height: 22px; }
+.strip i { border-radius: 1px; background: var(--ok); opacity: .6; }
+.strip i.warn { background: var(--warn); opacity: 1; }
+.strip i.down { background: var(--down); opacity: 1; }
+.strip i.none { background: var(--empty); opacity: 1; }
+.axis { display: flex; justify-content: space-between; font: 11px var(--font-mono); color: var(--fg-3); }
+.kv { display: flex; gap: 22px; flex-wrap: wrap; font: 12px var(--font-mono); color: var(--fg-3); }
+.kv b { color: var(--fg); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+footer { font: 12px var(--font-mono); color: var(--fg-3); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <a class="brand" href="https://relaxingame.app"><b>RelaxInGame</b><span>/ status</span></a>
+    <a class="back" href="https://relaxingame.app">Back to site →</a>
+  </header>
+
+  <section>
+    <div class="verdict"><span class="dot lg pulse" id="verdict-dot" aria-hidden="true"></span><h1 id="verdict">Checking services…</h1></div>
+    <div class="sub" id="sub">Checked every 5 minutes</div>
+  </section>
+
+  <section class="frame" aria-labelledby="h-svc">
+    <div class="head">
+      <h2 id="h-svc">Services</h2>
+      <div class="legend">
+        <span><i class="dot ok"></i>Operational</span>
+        <span><i class="dot warn"></i>Degraded</span>
+        <span><i class="dot down"></i>Outage</span>
+      </div>
+    </div>
+    <div class="grid" id="grid">
+      <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+      <div class="detail" id="panel"><div><div class="inner" id="inner"></div></div></div>
+    </div>
+  </section>
+
+  <footer><span>© RelaxInGame Studio</span><span id="updated"></span></footer>
+</div>
+
+<script>
+/* ───────────── Settings ───────────── */
+// Upptime repo where the monitoring data lives
+const DATA_URL = "https://raw.githubusercontent.com/Inaki-de-miguel/relaxingame-status/master/history/summary.json";
+// First day of monitoring: days before this show as grey ("no data")
+const MONITORING_SINCE = "2026-10-22";
+// English names shown on the page, by Upptime slug (order = order on the page)
+const NAMES = {
+  "web": "Website",
+  "login": "Sign in",
+  "estadisticas": "Stats API",
+  "base-de-datos": "Database",
+  "sync": "Match sync",
+  "api-riot": "Riot API",
+  "ai-coach": "AI Coach",
+};
+// Optional custom message per service while something is happening.
+// Example: "ai-coach": "Temporarily unavailable while we rotate API keys."
+const NOTES = {};
+// Minutes down in a day: up to this many = yellow, more = red
+const DEGRADED_MAX_MIN = 30;
+/* ───────────────────────────────────── */
+
+const word = { ok: "Operational", warn: "Degraded", down: "Outage" };
+const defaultMsg = {
+  ok: "Working normally.",
+  warn: "Responding slowly or only partly. We're looking into it.",
+  down: "Not responding right now. We're working on it.",
+};
+const toState = (s) => (s === "up" ? "ok" : s === "degraded" ? "warn" : "down");
+
+const grid = document.getElementById("grid");
+const panel = document.getElementById("panel");
+const inner = document.getElementById("inner");
+let services = [];
+let openSlug = null;
+
+function isoDay(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+function last30(dailyMinutesDown) {
+  const out = [];
+  const today = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = isoDay(d);
+    const mins = (dailyMinutesDown || {})[key] || 0;
+    let cls = "";
+    if (key < MONITORING_SINCE) cls = "none";
+    else if (mins > DEGRADED_MAX_MIN) cls = "down";
+    else if (mins > 0) cls = "warn";
+    out.push({ cls, mins, label: d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) });
+  }
+  return out;
+}
+
+function render() {
+  // Tiles
+  grid.querySelectorAll(".tile, .skeleton").forEach((el) => el.remove());
+  const html = services.map((s, i) =>
+    `<button class="tile" data-i="${i}" aria-expanded="false" aria-controls="panel">` +
+    `<span class="dot ${s.state}" aria-label="${word[s.state]}"></span>${s.name}</button>`
+  ).join("");
+  grid.insertAdjacentHTML("afterbegin", html);
+
+  // Verdict
+  const down = services.filter((s) => s.state === "down").length;
+  const warn = services.filter((s) => s.state === "warn").length;
+  const ok = services.length - down - warn;
+  const vDot = document.getElementById("verdict-dot");
+  vDot.className = "dot lg pulse " + (down ? "down" : warn ? "warn" : "ok");
+  document.getElementById("verdict").textContent =
+    down ? (down === services.length ? "Major outage" : "Some services are down")
+    : warn ? "Some services are degraded"
+    : "All systems operational";
+  document.getElementById("sub").textContent = `${ok} of ${services.length} operational · checked every 5 minutes`;
+  document.getElementById("updated").textContent = "Updated " + new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
+  // Keep the open panel open after a refresh
+  if (openSlug) {
+    const i = services.findIndex((s) => s.slug === openSlug);
+    if (i >= 0) select(grid.querySelector(`.tile[data-i="${i}"]`), true);
+    else close();
+  }
+}
+
+function show(s) {
+  const days = last30(s.daily);
+  inner.innerHTML = `
+    <span class="state ${s.state}">${word[s.state]}</span>
+    <p class="msg">${NOTES[s.slug] || defaultMsg[s.state]}</p>
+    <div class="strip" aria-label="Last 30 days">${days.map((d) =>
+      `<i class="${d.cls}" title="${d.label} · ${d.cls === "none" ? "No data" : d.mins ? d.mins + " min down" : "No downtime"}"></i>`
+    ).join("")}</div>
+    <div class="axis"><span>30 days ago</span><span>Today</span></div>
+    <div class="kv"><span>Uptime <b>${s.uptime}</b></span><span>Avg response <b>${s.time} ms</b></span></div>`;
+}
+
+// Put the panel right after the last tile of the clicked tile's row
+function place(btn) {
+  const tiles = [...grid.querySelectorAll(".tile")];
+  const lastInRow = tiles.filter((t) => t.offsetTop === btn.offsetTop).pop();
+  if (lastInRow && lastInRow.nextElementSibling !== panel) lastInRow.after(panel);
+}
+
+function close() {
+  openSlug = null;
+  grid.querySelectorAll(".tile").forEach((x) => x.setAttribute("aria-expanded", "false"));
+  panel.classList.remove("open");
+}
+
+function select(btn, keepOpen) {
+  const s = services[btn.dataset.i];
+  grid.querySelectorAll(".tile").forEach((x) => x.setAttribute("aria-expanded", "false"));
+  btn.setAttribute("aria-expanded", "true");
+  openSlug = s.slug;
+  if (!keepOpen) {
+    panel.classList.remove("open");
+    panel.style.transition = "none";
+    place(btn);
+    void panel.offsetHeight;
+    panel.style.transition = "";
+  } else {
+    place(btn);
+  }
+  show(s);
+  panel.classList.add("open");
+}
+
+grid.addEventListener("click", (e) => {
+  const b = e.target.closest(".tile");
+  if (!b) return;
+  if (b.getAttribute("aria-expanded") === "true") close();
+  else select(b, false);
+});
+
+let resizeT;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => {
+    const cur = grid.querySelector('.tile[aria-expanded="true"]');
+    if (cur) place(cur);
+  }, 100);
+});
+
+async function load() {
+  try {
+    const res = await fetch(DATA_URL + "?t=" + Date.now(), { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    const order = Object.keys(NAMES);
+    services = data
+      .map((x) => ({
+        slug: x.slug,
+        name: NAMES[x.slug] || x.name,
+        state: toState(x.status),
+        uptime: x.uptimeMonth || x.uptime,
+        time: x.timeMonth ?? x.time,
+        daily: x.dailyMinutesDown,
+      }))
+      .sort((a, b) => (order.indexOf(a.slug) + 1 || 99) - (order.indexOf(b.slug) + 1 || 99));
+    render();
+  } catch (err) {
+    if (!services.length) {
+      document.getElementById("verdict").textContent = "Status unavailable";
+      document.getElementById("sub").textContent = "We couldn't load the latest status. Try again in a minute.";
+    }
+  }
+}
+
+load();
+setInterval(load, 5 * 60 * 1000);
+</script>
+</body>
+</html>
